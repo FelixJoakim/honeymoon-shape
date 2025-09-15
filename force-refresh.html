@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Force Browser Refresh</title>
+</head>
+<body>
+    <h1>Hard Refresh Instructions</h1>
+    <p>To clear browser cache and see the fixed version:</p>
+    <ol>
+        <li><strong>Chrome/Edge:</strong> Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows)</li>
+        <li><strong>Firefox:</strong> Cmd+Shift+R (Mac) or Ctrl+F5 (Windows)</li>
+        <li><strong>Safari:</strong> Cmd+Option+R (Mac)</li>
+    </ol>
+    
+    <p>Or open DevTools and right-click the refresh button, then select "Empty Cache and Hard Reload"</p>
+    
+    <script>
+        // Auto-redirect after showing instructions
+        setTimeout(() => {
+            window.location.href = 'http://localhost:3000';
+        }, 5000);
+    </script>
+</body>
+</html>
