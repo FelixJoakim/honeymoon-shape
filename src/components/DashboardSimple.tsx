@@ -89,7 +89,7 @@ export default function DashboardSimple({ user }: DashboardProps) {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                  Honeymoon Shape
+                  honeymoon.fit
                 </h1>
                 <p className="text-sm text-gray-600">Welcome back, {profile?.name || 'there'}!</p>
               </div>
@@ -207,7 +207,7 @@ export default function DashboardSimple({ user }: DashboardProps) {
             <CardHeader>
               <CardTitle className="text-green-800">🎉 Setup Complete!</CardTitle>
               <CardDescription className="text-green-700">
-                Congratulations! Your Honeymoon Shape profile is set up and ready. 
+                Congratulations! Your honeymoon.fit profile is set up and ready. 
                 Your local development environment is working perfectly with Supabase.
               </CardDescription>
             </CardHeader>

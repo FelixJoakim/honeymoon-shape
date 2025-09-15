@@ -15,7 +15,7 @@ export default function DashboardHeader({ userName, onSignOut }: DashboardHeader
           <div className="flex items-center space-x-4">
             <div>
               <h1 className="text-2xl font-bold text-blue-700">
-                Honeymoon Shape
+                honeymoon.fit
               </h1>
               <p className="text-sm text-gray-600">
                 Welcome back, {userName}!

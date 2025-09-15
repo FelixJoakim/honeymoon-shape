@@ -71,7 +71,7 @@ export default function OnboardingSimple({ user, onComplete }: OnboardingProps) 
             <Heart className="w-6 h-6 text-white" />
           </div>
           <CardTitle className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-            Welcome to Honeymoon Shape!
+            Welcome to honeymoon.fit!
           </CardTitle>
           <CardDescription className="text-gray-600">
             Let's set up your fitness journey for the perfect honeymoon body

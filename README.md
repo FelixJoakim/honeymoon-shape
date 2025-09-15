@@ -1,4 +1,4 @@
-# Honeymoon Shape 💝
+# honeymoon.fit 💝
 
 A beautiful fitness tracking app designed for couples preparing for their honeymoon. Built with React, TypeScript, Tailwind CSS, and Supabase.
 
@@ -24,7 +24,7 @@ A beautiful fitness tracking app designed for couples preparing for their honeym
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd honeymoon-shape
+   cd honeymoon.fit
    ```
 
 2. **Install dependencies**
@@ -130,3 +130,5 @@ This project is licensed under the MIT License.
 ## 💖 Made with Love
 
 Built with love for couples preparing for their special honeymoon! 🌴✈️
+
+Visit us at: **honeymoon.fit**

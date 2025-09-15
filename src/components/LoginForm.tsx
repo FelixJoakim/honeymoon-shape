@@ -82,7 +82,7 @@ export default function LoginForm() {
             </div>
           </div>
           <h1 className="text-4xl font-bold text-blue-700">
-            Honeymoon Shape
+            honeymoon.fit
           </h1>
           <p className="text-gray-600 mt-2">Your journey to the perfect honeymoon body</p>
           <div className="mt-4 p-3 bg-white/60 rounded-lg border border-blue-200">
