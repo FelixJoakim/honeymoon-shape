@@ -6,7 +6,7 @@ import DashboardHeader from './dashboard/DashboardHeader'
 import NavigationTabs from './dashboard/NavigationTabs'
 import OverviewContent from './dashboard/OverviewContent'
 import WeightTracker from './WeightTracker'
-import TrainingLog from './TrainingLog'
+import TrainingLog from './HITTrainingLog'
 import PhotoUpload from './PhotoUpload'
 import QuickNotes from './QuickNotes'
 

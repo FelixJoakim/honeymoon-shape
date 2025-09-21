@@ -982,23 +982,7 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
                 </DialogContent>
               </Dialog>
 
-              <Dialog open={isHitDialogOpen} onOpenChange={setIsHitDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-primary hover:bg-primary/90">
-                    <Zap className="w-4 h-4 mr-2" />
-                    HIT Workout
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Target className="w-5 h-5 text-primary" />
-                      Log HIT Workout
-                    </DialogTitle>
-                    <DialogDescription>
-                      Track your High-Intensity Training session with precise rep and weight data
-                    </DialogDescription>
-                  </DialogHeader>
+              {/* HIT dialog completely removed - now integrated into general workout */}
                   
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">

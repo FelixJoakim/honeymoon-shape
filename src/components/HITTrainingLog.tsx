@@ -40,14 +40,14 @@ interface HITTrainingLogProps {
 }
 
 const PRESET_WORKOUTS = {
-  'A': [
+  'HIT A (Upper Body)': [
     { name: 'Leveä leuka' },
     { name: 'Pystysouta istuen' },
     { name: 'Penkkikone maaten' },
     { name: 'Dippi' },
     { name: 'Vatsarutistuksia / Ab roller' }
   ],
-  'B': [
+  'HIT B (Lower Body)': [
     { name: 'Hauiskääntö tangolla (all-out + stop-hold 90°)' },
     { name: 'Eksentrinen leuanveto (underhand, 6-10s lasku)' },
     { name: 'French press / scull crusher' },
@@ -55,11 +55,29 @@ const PRESET_WORKOUTS = {
     { name: 'Pystypennerrus' },
     { name: 'Sivuvipunosto, staattinen' }
   ],
-  'C': [
+  'HIT C (Full Body)': [
     { name: 'Kyykky/kone, yksi jalka kerrallaan' },
     { name: 'Stiff leg deadlift, tai-leg' },
     { name: 'Traps, yksi käsi' },
     { name: 'Pohkeet, yksi jalka' }
+  ],
+  'Upper Body Strength': [
+    { name: 'Bench Press' },
+    { name: 'Pull-ups' },
+    { name: 'Shoulder Press' },
+    { name: 'Rows' }
+  ],
+  'Lower Body Power': [
+    { name: 'Squats' },
+    { name: 'Deadlifts' },
+    { name: 'Lunges' },
+    { name: 'Calf Raises' }
+  ],
+  'Full Body HIIT': [
+    { name: 'Burpees' },
+    { name: 'Mountain Climbers' },
+    { name: 'Jump Squats' },
+    { name: 'Push-ups' }
   ]
 }
 
@@ -330,17 +348,17 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90">
               <Plus className="w-4 h-4 mr-2" />
-              Log HIT Workout
+              Log Workout
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-primary" />
-                Log HIT Workout
+                Log Workout
               </DialogTitle>
               <DialogDescription>
-                Track your High-Intensity Training session with precise rep and weight data
+                Track your training session with precise rep and weight data (HIT, strength, HIIT, etc.)
               </DialogDescription>
             </DialogHeader>
             
@@ -350,12 +368,15 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
                   <Label>Workout Type</Label>
                   <Select value={selectedPreset || undefined} onValueChange={handlePresetSelect}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select workout type" />
+                      <SelectValue placeholder="Select workout type (HIT, Strength, HIIT, etc.)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="A">HIT A (Upper Body)</SelectItem>
-                      <SelectItem value="B">HIT B (Arms & Shoulders)</SelectItem>
-                      <SelectItem value="C">HIT C (Lower Body)</SelectItem>
+                      <SelectItem value="HIT A (Upper Body)">HIT A (Upper Body)</SelectItem>
+                      <SelectItem value="HIT B (Lower Body)">HIT B (Lower Body)</SelectItem>
+                      <SelectItem value="HIT C (Full Body)">HIT C (Full Body)</SelectItem>
+                      <SelectItem value="Upper Body Strength">Upper Body Strength</SelectItem>
+                      <SelectItem value="Lower Body Power">Lower Body Power</SelectItem>
+                      <SelectItem value="Full Body HIIT">Full Body HIIT</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
