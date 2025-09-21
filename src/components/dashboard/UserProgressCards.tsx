@@ -17,8 +17,35 @@ interface UserProgressCardsProps {
 }
 
 export default function UserProgressCards({ profile }: UserProgressCardsProps) {
-  const felixProgress = 0 // Reset progress - just getting started
-  const anniProgress = 0 // Reset progress for Anni
+  // Calculate progress based on weight goal (gain 5kg in 10 weeks = 0.5kg per week)
+  const calculateWeightProgress = () => {
+    if (!profile?.current_weight || !profile?.target_weight) return 0
+    const currentWeight = profile.current_weight
+    const targetWeight = profile.target_weight
+    const startWeight = currentWeight // Assuming current weight is starting weight for now
+    
+    // For weight gain: progress = (current - start) / (target - start) * 100
+    if (targetWeight > startWeight) {
+      const progress = ((currentWeight - startWeight) / (targetWeight - startWeight)) * 100
+      return Math.max(0, Math.min(100, progress))
+    }
+    // For weight loss: progress = (start - current) / (start - target) * 100  
+    else {
+      const progress = ((startWeight - currentWeight) / (startWeight - targetWeight)) * 100
+      return Math.max(0, Math.min(100, progress))
+    }
+  }
+
+  const calculateWeeklyGoal = () => {
+    if (!profile?.current_weight || !profile?.target_weight) return 0
+    const totalWeightChange = Math.abs(profile.target_weight - profile.current_weight)
+    const weeks = 10 // 10 week program
+    return totalWeightChange / weeks
+  }
+
+  const felixProgress = calculateWeightProgress()
+  const weeklyGoal = calculateWeeklyGoal()
+  const isGaining = profile?.target_weight && profile?.current_weight && profile.target_weight > profile.current_weight
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -31,24 +58,26 @@ export default function UserProgressCards({ profile }: UserProgressCardsProps) {
             </div>
             Felix's Progress
           </CardTitle>
-          <CardDescription>Current: {profile?.current_weight || 0}kg → Target: {profile?.target_weight || 0}kg</CardDescription>
+          <CardDescription>{felixProgress.toFixed(1)}% towards goal</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <div className="flex justify-between text-sm mb-2">
               <span>Progress</span>
-              <span className="font-medium text-amber-600">{felixProgress}%</span>
+              <span className="font-medium text-amber-600">{felixProgress.toFixed(1)}%</span>
             </div>
             <Progress value={felixProgress} className="h-3" />
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="bg-amber-50 p-3 rounded-lg">
-              <p className="text-gray-600">This Week</p>
-              <p className="font-bold text-amber-700">Ready to start!</p>
+              <p className="text-gray-600">Weekly Goal</p>
+              <p className="font-bold text-amber-700">
+                {isGaining ? '+' : '-'}{weeklyGoal.toFixed(1)}kg
+              </p>
             </div>
             <div className="bg-orange-50 p-3 rounded-lg">
-              <p className="text-gray-600">Workouts</p>
-              <p className="font-bold text-orange-700">0/3 done</p>
+              <p className="text-gray-600">Target Weight</p>
+              <p className="font-bold text-orange-700">{profile?.target_weight || 0}kg</p>
             </div>
           </div>
         </CardContent>
@@ -63,24 +92,26 @@ export default function UserProgressCards({ profile }: UserProgressCardsProps) {
             </div>
             Anni's Progress
           </CardTitle>
-          <CardDescription>Ready to begin the journey together!</CardDescription>
+          <CardDescription>0.0% towards goal</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <div className="flex justify-between text-sm mb-2">
               <span>Progress</span>
-              <span className="font-medium text-amber-600">{anniProgress}%</span>
+              <span className="font-medium text-amber-600">0%</span>
             </div>
-            <Progress value={anniProgress} className="h-3" />
+            <Progress value={0} className="h-3" />
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="bg-amber-50 p-3 rounded-lg">
-              <p className="text-gray-600">This Week</p>
-              <p className="font-bold text-amber-700">Ready to start!</p>
+              <p className="text-gray-600">Weekly Goal</p>
+              <p className="font-bold text-amber-700">
+                {isGaining ? '+' : '-'}{weeklyGoal.toFixed(1)}kg
+              </p>
             </div>
             <div className="bg-orange-50 p-3 rounded-lg">
-              <p className="text-gray-600">Workouts</p>
-              <p className="font-bold text-orange-700">0/3 done</p>
+              <p className="text-gray-600">Target Weight</p>
+              <p className="font-bold text-orange-700">{profile?.target_weight || 0}kg</p>
             </div>
           </div>
         </CardContent>

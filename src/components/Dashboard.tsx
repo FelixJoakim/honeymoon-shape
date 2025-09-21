@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '../utils/supabase/client'
 import { projectId, publicAnonKey } from '../utils/supabase/info'
-import HoneymoonProgressBar from './dashboard/WeddingProgressBar'
 import DashboardHeader from './dashboard/DashboardHeader'
 import NavigationTabs from './dashboard/NavigationTabs'
 import OverviewContent from './dashboard/OverviewContent'
@@ -78,7 +77,6 @@ export default function Dashboard({ user, profile: initialProfile }: DashboardPr
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-      <HoneymoonProgressBar />
       <DashboardHeader 
         userName={profile?.name || 'there'} 
         onSignOut={handleSignOut} 
