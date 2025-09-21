@@ -74,6 +74,43 @@ export default function UserProgressCards({ profile }: UserProgressCardsProps) {
   const currentUserColor = isFelix ? 'amber' : 'rose'
   const partnerColor = isFelix ? 'rose' : 'amber'
 
+  // Mock partner goals (in production, this would fetch from partner's profile)
+  const partnerGoals = {
+    current_weight: isFelix ? 58 : 82, // Anni: 58kg, Felix: 82kg
+    target_weight: isFelix ? 62 : 78,  // Anni: 62kg, Felix: 78kg
+  }
+
+  const calculatePartnerProgress = () => {
+    const { current_weight, target_weight } = partnerGoals
+    if (!current_weight || !target_weight) return 0
+    
+    if (target_weight > current_weight) {
+      // Gaining weight
+      const progress = ((current_weight - current_weight) / (target_weight - current_weight)) * 100
+      return Math.max(0, Math.min(100, progress))
+    } else {
+      // Losing weight
+      const progress = ((current_weight - current_weight) / (current_weight - target_weight)) * 100
+      return Math.max(0, Math.min(100, progress))
+    }
+  }
+
+  const calculatePartnerWeeklyGoal = () => {
+    const { current_weight, target_weight } = partnerGoals
+    if (!current_weight || !target_weight) return 0
+    const totalChange = Math.abs(target_weight - current_weight)
+    const weeks = 10 
+    return totalChange / weeks
+  }
+
+  const isPartnerGaining = () => {
+    const { current_weight, target_weight } = partnerGoals
+    return target_weight > current_weight
+  }
+
+  const partnerProgress = calculatePartnerProgress()
+  const partnerWeeklyGoal = calculatePartnerWeeklyGoal()
+
   const sendEncouragementEmail = async () => {
     if (!encouragementMessage.trim()) return
     
@@ -119,8 +156,8 @@ export default function UserProgressCards({ profile }: UserProgressCardsProps) {
             <Progress value={felixProgress} className="h-3" />
           </div>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="bg-amber-50 p-3 rounded-lg">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="bg-amber-50 p-3 rounded-lg">
                 <p className="text-gray-600">Weekly Goal</p>
                 <p className="font-bold text-amber-700">
                   {isGaining ? '+' : '-'}{weeklyGoal.toFixed(1)}kg
@@ -164,27 +201,27 @@ export default function UserProgressCards({ profile }: UserProgressCardsProps) {
             </div>
             {partnerName}'s Progress
           </CardTitle>
-          <CardDescription>0.0% towards goal</CardDescription>
+          <CardDescription>{partnerProgress.toFixed(1)}% towards goal</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <div className="flex justify-between text-sm mb-2">
               <span>Progress</span>
-              <span className="font-medium text-amber-600">0%</span>
+              <span className="font-medium text-amber-600">{partnerProgress.toFixed(1)}%</span>
             </div>
-            <Progress value={0} className="h-3" />
+            <Progress value={partnerProgress} className="h-3" />
           </div>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="bg-amber-50 p-3 rounded-lg">
                 <p className="text-gray-600">Weekly Goal</p>
                 <p className="font-bold text-amber-700">
-                  {isGaining ? '+' : '-'}{weeklyGoal.toFixed(1)}kg
+                  {isPartnerGaining() ? '+' : '-'}{partnerWeeklyGoal.toFixed(1)}kg
                 </p>
               </div>
               <div className="bg-orange-50 p-3 rounded-lg">
                 <p className="text-gray-600">Target Weight</p>
-                <p className="font-bold text-orange-700">{profile?.target_weight || 0}kg</p>
+                <p className="font-bold text-orange-700">{partnerGoals.target_weight}kg</p>
               </div>
             </div>
             

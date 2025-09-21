@@ -33,18 +33,12 @@ export default function QuickNotes({ user }: QuickNotesProps) {
 
   const fetchNotes = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/notes`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-
-      const data = await response.json()
-      if (data.notes) {
-        setNotes(data.notes.sort((a: Note, b: Note) => 
+      // For now, notes are stored in local state
+      // In production, this would fetch from Supabase notes table
+      const storedNotes = localStorage.getItem(`notes_${user.id}`)
+      if (storedNotes) {
+        const parsedNotes = JSON.parse(storedNotes)
+        setNotes(parsedNotes.sort((a: Note, b: Note) => 
           new Date(b.date).getTime() - new Date(a.date).getTime()
         ))
       }
@@ -58,27 +52,25 @@ export default function QuickNotes({ user }: QuickNotesProps) {
 
     setLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/notes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          content: newNote.trim(),
-          date: new Date().toISOString().split('T')[0]
-        })
-      })
-
-      if (response.ok) {
-        setNewNote('')
-        fetchNotes()
+      const newNoteObj: Note = {
+        id: Date.now().toString(),
+        user_id: user.id,
+        content: newNote.trim(),
+        date: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString()
       }
+
+      const updatedNotes = [newNoteObj, ...notes]
+      setNotes(updatedNotes)
+      
+      // Save to localStorage
+      localStorage.setItem(`notes_${user.id}`, JSON.stringify(updatedNotes))
+      
+      setNewNote('')
+      console.log('Note saved successfully!')
     } catch (error) {
       console.error('Error adding note:', error)
+      alert('Failed to save note')
     } finally {
       setLoading(false)
     }
@@ -89,27 +81,21 @@ export default function QuickNotes({ user }: QuickNotesProps) {
 
     setLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/notes/${noteKey}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          content: editContent.trim()
-        })
-      })
-
-      if (response.ok) {
-        setEditingNote(null)
-        setEditContent('')
-        fetchNotes()
-      }
+      const updatedNotes = notes.map(note => 
+        note.id === noteKey 
+          ? { ...note, content: editContent.trim() }
+          : note
+      )
+      
+      setNotes(updatedNotes)
+      localStorage.setItem(`notes_${user.id}`, JSON.stringify(updatedNotes))
+      
+      setEditingNote(null)
+      setEditContent('')
+      console.log('Note updated successfully!')
     } catch (error) {
       console.error('Error editing note:', error)
+      alert('Failed to update note')
     } finally {
       setLoading(false)
     }
@@ -119,21 +105,14 @@ export default function QuickNotes({ user }: QuickNotesProps) {
     if (!confirm('Are you sure you want to delete this note?')) return
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/notes/${noteKey}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-
-      if (response.ok) {
-        fetchNotes()
-      }
+      const updatedNotes = notes.filter(note => note.id !== noteKey)
+      setNotes(updatedNotes)
+      localStorage.setItem(`notes_${user.id}`, JSON.stringify(updatedNotes))
+      
+      console.log('Note deleted successfully!')
     } catch (error) {
       console.error('Error deleting note:', error)
+      alert('Failed to delete note')
     }
   }
 

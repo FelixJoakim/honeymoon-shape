@@ -33,9 +33,13 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
 
   const fetchPhotos = async () => {
     try {
-      // For now, use local state to store photos until we set up photo storage
-      // In a real implementation, you would fetch from Supabase storage
-      setPhotos([])
+      const storedPhotos = localStorage.getItem(`photos_${user.id}`)
+      if (storedPhotos) {
+        const parsedPhotos = JSON.parse(storedPhotos)
+        setPhotos(parsedPhotos.sort((a: PhotoEntry, b: PhotoEntry) => 
+          new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime()
+        ))
+      }
     } catch (error) {
       console.error('Error fetching photos:', error)
     }
@@ -49,9 +53,9 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
     return diffWeeks
   }
 
-  const hasPhotoThisWeek = () => {
-    const currentWeek = getWeekNumber()
-    return photos.some(photo => photo.week_number === currentWeek)
+  const hasPhotoToday = () => {
+    const today = new Date().toISOString().split('T')[0]
+    return photos.some(photo => photo.upload_date === today)
   }
 
   const uploadPhoto = async (file: File) => {
@@ -68,27 +72,40 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
     setUploading(true)
 
     try {
-      // Create a URL for the uploaded file (for demo purposes)
-      const fileUrl = URL.createObjectURL(file)
-      
-      const newPhoto: PhotoEntry = {
-        id: Date.now().toString(),
-        user_id: user.id,
-        file_name: file.name,
-        file_url: fileUrl,
-        upload_date: new Date().toISOString().split('T')[0],
-        week_number: getWeekNumber(),
-        created_at: new Date().toISOString()
-      }
+      // Convert file to base64 for persistent storage
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string
+        
+        const newPhoto: PhotoEntry = {
+          id: Date.now().toString(),
+          user_id: user.id,
+          file_name: file.name,
+          file_url: base64,
+          upload_date: new Date().toISOString().split('T')[0],
+          week_number: getWeekNumber(),
+          created_at: new Date().toISOString()
+        }
 
-      // Add to local state
-      setPhotos(prev => [newPhoto, ...prev])
+        // Add to local state and persist
+        const updatedPhotos = [newPhoto, ...photos]
+        setPhotos(updatedPhotos)
+        localStorage.setItem(`photos_${user.id}`, JSON.stringify(updatedPhotos))
+        
+        console.log('Photo uploaded successfully!')
+        setUploading(false)
+      }
       
-      console.log('Photo uploaded successfully!')
+      reader.onerror = () => {
+        console.error('Error reading file')
+        alert('Error reading file')
+        setUploading(false)
+      }
+      
+      reader.readAsDataURL(file)
     } catch (error) {
       console.error('Error uploading photo:', error)
       alert('Error uploading photo')
-    } finally {
       setUploading(false)
     }
   }
@@ -139,23 +156,23 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Camera className="w-5 h-5 text-purple-600" />
-            Weekly Progress Photos
+            Progress Photos
           </CardTitle>
           <CardDescription>
             Track your visual transformation journey to the wedding
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {hasPhotoThisWeek() ? (
+          {false ? ( // Remove restriction - always allow upload
             <div className="text-center py-8">
               <Badge className="bg-green-100 text-green-800 border-green-200 mb-4">
-                Photo uploaded this week ✓
+                Photo uploaded today ✓
               </Badge>
               <p className="text-gray-600">
-                You've already uploaded your progress photo for this week. Come back next week!
+                Photo uploaded successfully!
               </p>
               <p className="text-sm text-gray-500 mt-2">
-                Week {getWeekNumber()} • {new Date().toLocaleDateString('en-US', { 
+                {new Date().toLocaleDateString('en-US', { 
                   weekday: 'long',
                   month: 'long', 
                   day: 'numeric' 
@@ -178,10 +195,14 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
             >
               <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-600 mb-2">
-                Upload This Week's Progress Photo
+                Upload Progress Photo
               </h3>
               <p className="text-gray-500 mb-4">
-                Week {getWeekNumber()} • Drag and drop or click to select
+                {new Date().toLocaleDateString('en-US', { 
+                  weekday: 'long',
+                  month: 'long', 
+                  day: 'numeric' 
+                })} • Drag and drop or click to select
               </p>
               
               <input
@@ -253,7 +274,10 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <Badge variant="outline" className="mb-2">
-                        Week {photo.week_number}
+                        {new Date(photo.upload_date).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
                       </Badge>
                       <div className="flex items-center gap-1 text-sm text-gray-600">
                         <Calendar className="w-4 h-4" />
