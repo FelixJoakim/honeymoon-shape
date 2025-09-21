@@ -1,7 +1,7 @@
-import { HONEYMOON_DATE, START_DATE } from './constants'
+import { DEFAULT_HONEYMOON_DATE, START_DATE } from './constants'
 
-export const getProgressToHoneymoon = () => {
-  const honeymoonDate = new Date(HONEYMOON_DATE)
+export const getProgressToHoneymoon = (weddingDate?: string) => {
+  const honeymoonDate = new Date(weddingDate || DEFAULT_HONEYMOON_DATE)
   const today = new Date()
   const totalTime = honeymoonDate.getTime() - new Date(START_DATE).getTime()
   const timeLeft = honeymoonDate.getTime() - today.getTime()
@@ -19,6 +19,6 @@ export const getWeightProgress = (profile: { current_weight: number | null; targ
   return Math.round((currentLoss / totalLoss) * 100)
 }
 
-export const getDaysToHoneymoon = () => {
-  return Math.ceil((new Date(HONEYMOON_DATE).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+export const getDaysToHoneymoon = (weddingDate?: string) => {
+  return Math.ceil((new Date(weddingDate || DEFAULT_HONEYMOON_DATE).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
 }

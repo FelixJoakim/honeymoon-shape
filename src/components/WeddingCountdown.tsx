@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Heart, Calendar } from 'lucide-react'
 
-export default function WeddingCountdown() {
+interface WeddingCountdownProps {
+  weddingDate?: string
+}
+
+export default function WeddingCountdown({ weddingDate }: WeddingCountdownProps) {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -12,10 +16,11 @@ export default function WeddingCountdown() {
 
   useEffect(() => {
     const calculateTimeLeft = () => {
-      // Default to April 25, 2026 but will be dynamic based on user's wedding date
-      const weddingDate = new Date('2026-04-25T00:00:00').getTime()
+      // Use provided wedding date or default to April 2026
+      const targetDate = weddingDate ? new Date(weddingDate) : new Date('2026-04-01T00:00:00')
+      const weddingDateTime = targetDate.getTime()
       const now = new Date().getTime()
-      const difference = weddingDate - now
+      const difference = weddingDateTime - now
 
       if (difference > 0) {
         setTimeLeft({
@@ -31,18 +36,18 @@ export default function WeddingCountdown() {
     const timer = setInterval(calculateTimeLeft, 1000)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [weddingDate])
 
   return (
     <Card className="bg-gradient-to-r from-amber-600 to-orange-600 text-white border-0 shadow-xl rounded-xl overflow-hidden">
       <CardHeader className="text-center">
         <CardTitle className="flex items-center justify-center gap-2 text-2xl">
           <Heart className="w-8 h-8" />
-          Felix & Anni's Honeymoon Countdown
+          Honeymoon Countdown
         </CardTitle>
         <div className="flex items-center justify-center gap-2 text-amber-100">
           <Calendar className="w-4 h-4" />
-          <span>Set your wedding date in profile</span>
+          <span>{weddingDate ? new Date(weddingDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'April 2026'}</span>
         </div>
       </CardHeader>
       <CardContent>

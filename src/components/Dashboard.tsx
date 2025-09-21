@@ -26,16 +26,21 @@ interface UserProfile {
 
 interface DashboardProps {
   user: User
+  profile: UserProfile | null
 }
 
-export default function Dashboard({ user }: DashboardProps) {
-  const [profile, setProfile] = useState<UserProfile | null>(null)
+export default function Dashboard({ user, profile: initialProfile }: DashboardProps) {
+  const [profile, setProfile] = useState<UserProfile | null>(initialProfile)
   const [activeTab, setActiveTab] = useState('overview')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetchProfile()
-  }, [])
+    if (initialProfile) {
+      setProfile(initialProfile)
+    } else {
+      fetchProfile()
+    }
+  }, [initialProfile])
 
   const fetchProfile = async () => {
     try {

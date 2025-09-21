@@ -9,6 +9,12 @@ interface UserProfile {
   email: string
   current_weight: number | null
   target_weight: number | null
+  wedding_date?: string
+  primary_goal?: string
+  secondary_goal?: string
+  fitness_level?: string
+  preferred_workouts?: string
+  onboarding_completed?: boolean
   created_at: string
 }
 
@@ -20,7 +26,7 @@ export default function OverviewContent({ profile }: OverviewContentProps) {
   return (
     <div className="space-y-8">
       {/* Wedding Countdown */}
-      <WeddingCountdown />
+      <WeddingCountdown weddingDate={profile?.wedding_date} />
 
       {/* Both Users Progress Side by Side */}
       <UserProgressCards profile={profile} />

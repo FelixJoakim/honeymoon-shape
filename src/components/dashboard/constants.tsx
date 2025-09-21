@@ -16,5 +16,5 @@ export const MOCK_ANNI_PROFILE = {
   thisWeekProgress: 0.3
 }
 
-export const HONEYMOON_DATE = '2026-04-25'
+export const DEFAULT_HONEYMOON_DATE = '2026-04-01'
 export const START_DATE = '2024-01-01'

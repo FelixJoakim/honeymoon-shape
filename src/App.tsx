@@ -28,23 +28,86 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      setLoading(false)
+      if (session?.user) {
+        fetchProfile(session.user.id)
+      } else {
+        setLoading(false)
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      setLoading(false)
+      if (session?.user) {
+        fetchProfile(session.user.id)
+      } else {
+        setProfile(null)
+        setLoading(false)
+      }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  const handleOnboardingComplete = async (profileData: UserProfile) => {
+  const fetchProfile = async (userId: string) => {
     try {
-      // In a real app, you would save this to Supabase
-      // For now, just set it in local state
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+        console.error('Error fetching profile:', error)
+      }
+
+      if (data) {
+        setProfile({
+          name: data.full_name || '',
+          email: data.email || '',
+          current_weight: data.current_weight,
+          target_weight: data.goal_weight,
+          wedding_date: data.wedding_date,
+          primary_goal: data.primary_goal,
+          secondary_goal: data.secondary_goal,
+          fitness_level: data.fitness_level,
+          preferred_workouts: data.preferred_workouts,
+          onboarding_completed: true,
+          created_at: data.created_at
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOnboardingComplete = async (profileData: UserProfile) => {
+    if (!user) return
+
+    try {
+      // Save to Supabase profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          full_name: profileData.name,
+          current_weight: profileData.current_weight,
+          goal_weight: profileData.target_weight,
+          wedding_date: profileData.wedding_date,
+          primary_goal: profileData.primary_goal,
+          secondary_goal: profileData.secondary_goal,
+          fitness_level: profileData.fitness_level,
+          preferred_workouts: profileData.preferred_workouts,
+          updated_at: new Date().toISOString()
+        })
+
+      if (error) throw error
+
+      // Update local state
       setProfile(profileData)
-      console.log('Profile completed:', profileData)
+      console.log('Profile saved successfully:', profileData)
     } catch (error) {
       console.error('Error saving profile:', error)
     }
@@ -68,5 +131,5 @@ export default function App() {
     return <OnboardingSimple user={user} onComplete={handleOnboardingComplete} />
   }
 
-  return <Dashboard user={user} />
+  return <Dashboard user={user} profile={profile} />
 }
