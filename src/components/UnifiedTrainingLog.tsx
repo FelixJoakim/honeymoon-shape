@@ -11,7 +11,7 @@ import { Badge } from './ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
-import { Dumbbell, Plus, Clock, Target, Calendar, Zap, Award, Users, TrendingUp, Heart } from 'lucide-react'
+import { Dumbbell, Plus, Clock, Target, Calendar, Zap, Award, Users, TrendingUp, Heart, Edit, Save, X } from 'lucide-react'
 import { toast } from 'sonner@2.0.3'
 
 interface GeneralTrainingEntry {
@@ -660,6 +660,17 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {workout.user_id === user.id && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => startEditingWorkout(workout)}
+                className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
+              >
+                <Edit className="w-4 h-4" />
+                Edit
+              </Button>
+            )}
             {showEndorse && !workout.endorsements?.includes(user.id) && (
               <Button
                 size="sm"
@@ -1014,6 +1025,84 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
                       </Button>
                     </div>
                   </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Workout Edit Dialog */}
+              <Dialog open={!!editingWorkout} onOpenChange={() => editingWorkout && cancelEditing()}>
+                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Edit className="w-5 h-5 text-blue-600" />
+                      Edit Workout
+                    </DialogTitle>
+                    <DialogDescription>
+                      Modify your workout details and save changes
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  {editingWorkout && (
+                    <div className="space-y-6">
+                      <div>
+                        <Label htmlFor="edit-workout-name">Workout Name</Label>
+                        <Input
+                          id="edit-workout-name"
+                          value={editingWorkoutName}
+                          onChange={(e) => setEditingWorkoutName(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-medium">Exercises</h3>
+                        {editingExercises.map((exercise, exerciseIndex) => (
+                          <div key={exerciseIndex} className="border rounded-lg p-4 space-y-3">
+                            <h4 className="font-medium text-primary">{exercise.name}</h4>
+                            <div className="grid gap-2">
+                              {exercise.sets.map((set, setIndex) => (
+                                <div key={setIndex} className="flex items-center gap-2">
+                                  <span className="text-sm text-muted-foreground w-8">#{setIndex + 1}</span>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="text"
+                                      value={set.reps}
+                                      onChange={(e) => updateEditingExerciseSet(exerciseIndex, setIndex, 'reps', e.target.value)}
+                                      placeholder="Reps"
+                                      className="w-20"
+                                    />
+                                    <span className="text-muted-foreground">×</span>
+                                    <Input
+                                      type="text"
+                                      value={set.weight}
+                                      onChange={(e) => updateEditingExerciseSet(exerciseIndex, setIndex, 'weight', e.target.value)}
+                                      placeholder="Weight"
+                                      className="w-20"
+                                    />
+                                    <span className="text-muted-foreground text-sm">kg</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2 pt-4">
+                        <Button 
+                          onClick={saveEditedWorkout}
+                          disabled={loading}
+                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                        >
+                          <Save className="w-4 h-4 mr-2" />
+                          {loading ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                        <Button variant="outline" onClick={cancelEditing}>
+                          <X className="w-4 h-4 mr-2" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </DialogContent>
               </Dialog>
             </div>
