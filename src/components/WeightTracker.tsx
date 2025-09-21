@@ -35,6 +35,7 @@ interface WeightTrackerProps {
 export default function WeightTracker({ user, profile, onProfileUpdate }: WeightTrackerProps) {
   const [currentWeight, setCurrentWeight] = useState('')
   const [targetWeight, setTargetWeight] = useState('')
+  const [goalDate, setGoalDate] = useState('')
   const [newWeight, setNewWeight] = useState('')
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([])
   const [loading, setLoading] = useState(false)
@@ -43,6 +44,11 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
   useEffect(() => {
     if (profile?.current_weight) setCurrentWeight(profile.current_weight.toString())
     if (profile?.target_weight) setTargetWeight(profile.target_weight.toString())
+    // Set default goal date to end of current year
+    if (!goalDate) {
+      const currentYear = new Date().getFullYear()
+      setGoalDate(`${currentYear}-12-31`)
+    }
     fetchWeightEntries()
   }, [profile])
 
@@ -58,7 +64,7 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
   }
 
   const handleSetGoals = async () => {
-    if (!currentWeight || !targetWeight) return
+    if (!currentWeight || !targetWeight || !goalDate) return
 
     setLoading(true)
     try {
@@ -68,6 +74,7 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
         .update({
           current_weight: parseFloat(currentWeight),
           goal_weight: parseFloat(targetWeight),
+          goal_date: goalDate,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)
@@ -144,7 +151,13 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
   const getWeeklyGoal = () => {
     if (!profile?.current_weight || !profile?.target_weight) return 0
     const totalChange = Math.abs(profile.target_weight - profile.current_weight)
-    const weeks = 10 // 10 week program
+    
+    // Calculate weeks until goal date
+    const today = new Date()
+    const targetDate = goalDate ? new Date(goalDate) : new Date(today.getFullYear(), 11, 31) // Default to end of year
+    const timeDiff = targetDate.getTime() - today.getTime()
+    const weeks = Math.max(1, Math.ceil(timeDiff / (1000 * 60 * 60 * 24 * 7))) // At least 1 week
+    
     return totalChange / weeks
   }
 
@@ -190,12 +203,21 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
                   placeholder="65.0"
                 />
               </div>
+              <div>
+                <Label htmlFor="goal-date">Goal Date</Label>
+                <Input
+                  id="goal-date"
+                  type="date"
+                  value={goalDate}
+                  onChange={(e) => setGoalDate(e.target.value)}
+                />
+              </div>
             </div>
             
             <div className="flex gap-2">
               <Button
                 onClick={handleSetGoals}
-                disabled={loading || !currentWeight || !targetWeight}
+                disabled={loading || !currentWeight || !targetWeight || !goalDate}
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
               >
                 {loading ? 'Setting Goals...' : 'Set Goals'}
