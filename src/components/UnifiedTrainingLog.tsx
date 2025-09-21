@@ -495,6 +495,48 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
     setEditingWorkoutName('')
   }
 
+  const findPreviousWorkout = (currentWorkout: HITWorkout) => {
+    // Find the most recent workout of the same type (excluding current one)
+    const sameTypeWorkouts = allWorkouts
+      .filter(w => 
+        w.type === 'hit' && 
+        w.user_id === currentWorkout.user_id &&
+        (w as HITWorkout).workout_name === currentWorkout.workout_name &&
+        (w as HITWorkout).id !== currentWorkout.id
+      )
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    
+    return sameTypeWorkouts[0] as HITWorkout || null
+  }
+
+  const compareExerciseProgress = (currentExercise: Exercise, previousExercise?: Exercise) => {
+    if (!previousExercise) return 'new'
+    
+    // Compare total volume (reps × weight) for first set
+    const getCurrentVolume = () => {
+      const firstSet = currentExercise.sets[0]
+      if (!firstSet || !firstSet.reps || !firstSet.weight) return 0
+      const reps = parseInt(firstSet.reps.toString().split(/[+/]/)[0] || '0')
+      const weight = parseFloat(firstSet.weight.toString().replace(/[^0-9.]/g, '') || '0')
+      return reps * weight
+    }
+    
+    const getPreviousVolume = () => {
+      const firstSet = previousExercise.sets[0]
+      if (!firstSet || !firstSet.reps || !firstSet.weight) return 0
+      const reps = parseInt(firstSet.reps.toString().split(/[+/]/)[0] || '0')
+      const weight = parseFloat(firstSet.weight.toString().replace(/[^0-9.]/g, '') || '0')
+      return reps * weight
+    }
+    
+    const currentVolume = getCurrentVolume()
+    const previousVolume = getPreviousVolume()
+    
+    if (currentVolume > previousVolume) return 'improved'
+    if (currentVolume < previousVolume) return 'declined'
+    return 'same'
+  }
+
   const saveHitWorkout = async () => {
     if (!selectedPreset || workoutExercises.length === 0) {
       alert('Please select a workout type and add exercises')
@@ -580,7 +622,10 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
     'Full Body HIIT',
     'Cardio Session',
     'Core & Conditioning',
-    'Yoga & Flexibility'
+    'Yoga & Flexibility',
+    'HIT A (Upper Body)',
+    'HIT B (Lower Body)', 
+    'HIT C (Full Body)'
   ]
 
   const renderGeneralWorkout = (entry: GeneralTrainingEntry, index: number) => (
@@ -641,7 +686,10 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
     </Card>
   )
 
-  const renderHitWorkout = (workout: HITWorkout, showEndorse = false) => (
+  const renderHitWorkout = (workout: HITWorkout, showEndorse = false) => {
+    const previousWorkout = findPreviousWorkout(workout)
+    
+    return (
     <Card key={workout.id} className="bg-card/90 backdrop-blur-sm border border-primary/20 shadow-lg">
       <CardHeader className="pb-4">
         <div className="flex justify-between items-start">
@@ -707,10 +755,31 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
               </tr>
             </thead>
             <tbody>
-              {workout.exercises.map((exercise, idx) => (
+              {workout.exercises.map((exercise, idx) => {
+                const previousExercise = previousWorkout?.exercises.find(e => e.name === exercise.name)
+                const progress = compareExerciseProgress(exercise, previousExercise)
+                
+                return (
                 <tr key={idx} className="border-b border-border/50">
                   <td className="py-2 px-2 font-medium text-sm">
-                    {exercise.name}
+                    <div className="flex items-center gap-2">
+                      <span>{exercise.name}</span>
+                      {progress === 'improved' && (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                          ↗ Better
+                        </Badge>
+                      )}
+                      {progress === 'declined' && (
+                        <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                          📍 Focus Next Time
+                        </Badge>
+                      )}
+                      {progress === 'same' && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                          = Same
+                        </Badge>
+                      )}
+                    </div>
                   </td>
                   {exercise.sets.slice(0, 2).map((set, setIdx) => (
                     <Fragment key={setIdx}>
@@ -737,7 +806,8 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
                     </>
                   )}
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -754,7 +824,8 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
         )}
       </CardContent>
     </Card>
-  )
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -826,10 +897,10 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <Dumbbell className="w-5 h-5 text-blue-600" />
-                      Log General Workout
+                      Log Workout
                     </DialogTitle>
                     <DialogDescription>
-                      Track your general training session details
+                      Track your training session details (general workouts, HIT sessions, etc.)
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
@@ -1121,13 +1192,7 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
                       onClick={() => setIsGeneralDialogOpen(true)}
                       className="bg-gradient-to-r from-blue-600 to-indigo-600"
                     >
-                      Log General Workout
-                    </Button>
-                    <Button
-                      onClick={() => setIsHitDialogOpen(true)}
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      Log HIT Workout
+                      Log Workout
                     </Button>
                   </div>
                 </CardContent>
