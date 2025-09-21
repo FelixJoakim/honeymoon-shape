@@ -48,21 +48,10 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
 
   const fetchWeightEntries = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      if (!user) return
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/weight`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-
-      const data = await response.json()
-      if (data.entries) {
-        setWeightEntries(data.entries.sort((a: WeightEntry, b: WeightEntry) => 
-          new Date(a.date).getTime() - new Date(b.date).getTime()
-        ))
-      }
+      // For now, use mock data until we set up weight tracking table
+      setWeightEntries([])
     } catch (error) {
       console.error('Error fetching weight entries:', error)
     }
@@ -73,26 +62,28 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
 
     setLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
+      // Update profile in Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .update({
           current_weight: parseFloat(currentWeight),
-          target_weight: parseFloat(targetWeight)
+          goal_weight: parseFloat(targetWeight),
+          updated_at: new Date().toISOString()
         })
-      })
+        .eq('id', user.id)
 
-      const data = await response.json()
-      if (data.profile) {
-        onProfileUpdate(data.profile)
-        setShowGoalForm(false)
+      if (error) throw error
+
+      // Update local profile state
+      const updatedProfile = {
+        ...profile,
+        current_weight: parseFloat(currentWeight),
+        target_weight: parseFloat(targetWeight)
       }
+      onProfileUpdate(updatedProfile)
+      setShowGoalForm(false)
+      
+      console.log('Goals saved successfully!')
     } catch (error) {
       console.error('Error setting goals:', error)
     } finally {
@@ -105,25 +96,20 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
 
     setLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/weight`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          weight: parseFloat(newWeight),
-          date: new Date().toISOString().split('T')[0]
-        })
-      })
-
-      if (response.ok) {
-        setNewWeight('')
-        fetchWeightEntries()
+      // For now, just add to local state until we set up weight tracking table
+      const newEntry = {
+        id: Date.now().toString(),
+        weight: parseFloat(newWeight),
+        date: new Date().toISOString().split('T')[0],
+        user_id: user.id
       }
+      
+      setWeightEntries(prev => [...prev, newEntry].sort((a, b) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      ))
+      setNewWeight('')
+      
+      console.log('Weight entry added successfully!')
     } catch (error) {
       console.error('Error adding weight entry:', error)
     } finally {
@@ -157,16 +143,14 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
 
   const getWeeklyGoal = () => {
     if (!profile?.current_weight || !profile?.target_weight) return 0
-    
-    const latestWeight = weightEntries.length > 0 
-      ? weightEntries[weightEntries.length - 1].weight 
-      : profile.current_weight
-    
-    const daysToHoneymoon = getDaysToHoneymoon()
-    const weeksToHoneymoon = daysToHoneymoon / 7
-    const totalWeightGoal = latestWeight - profile.target_weight
-    
-    return Math.abs(totalWeightGoal / weeksToHoneymoon)
+    const totalChange = Math.abs(profile.target_weight - profile.current_weight)
+    const weeks = 10 // 10 week program
+    return totalChange / weeks
+  }
+
+  const isWeightGain = () => {
+    if (!profile?.current_weight || !profile?.target_weight) return false
+    return profile.target_weight > profile.current_weight
   }
 
   if (!profile?.current_weight || !profile?.target_weight || showGoalForm) {
@@ -258,7 +242,7 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-indigo-600 mb-2">
-              -{getWeeklyGoal().toFixed(1)}kg
+              {isWeightGain() ? '+' : '-'}{getWeeklyGoal().toFixed(1)}kg
             </div>
             <Badge variant="outline" className="text-xs">
               Per week

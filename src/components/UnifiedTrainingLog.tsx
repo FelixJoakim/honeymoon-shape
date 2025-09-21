@@ -248,6 +248,7 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
   const [loading, setLoading] = useState(false)
   const [isGeneralDialogOpen, setIsGeneralDialogOpen] = useState(false)
   const [isHitDialogOpen, setIsHitDialogOpen] = useState(false)
+  const [editingWorkout, setEditingWorkout] = useState<HITWorkout | null>(null)
   
   // General workout state
   const [newWorkout, setNewWorkout] = useState({
@@ -343,36 +344,35 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
         .map(lift => lift.trim())
         .filter(lift => lift.length > 0)
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/training`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          name: newWorkout.name,
-          duration: parseInt(newWorkout.duration),
-          keyLifts: keyLiftsArray,
-          date: newWorkout.date,
-          notes: newWorkout.notes
-        })
-      })
-
-      if (response.ok) {
-        setNewWorkout({
-          name: '',
-          duration: '',
-          keyLifts: '',
-          notes: '',
-          date: new Date().toISOString().split('T')[0]
-        })
-        setIsGeneralDialogOpen(false)
-        fetchAllWorkouts()
-        toast.success('General workout logged!')
+      // Create new general workout in local state
+      const newGeneralWorkout: GeneralTrainingEntry = {
+        type: 'general',
+        id: Date.now().toString(),
+        user_id: user.id,
+        name: newWorkout.name,
+        duration: parseInt(newWorkout.duration),
+        keyLifts: keyLiftsArray,
+        date: newWorkout.date,
+        notes: newWorkout.notes,
+        created_at: new Date().toISOString()
       }
+
+      // Add to local state
+      setAllWorkouts(prev => [newGeneralWorkout, ...prev])
+
+      setNewWorkout({
+        name: '',
+        duration: '',
+        keyLifts: '',
+        notes: '',
+        date: new Date().toISOString().split('T')[0]
+      })
+      setIsGeneralDialogOpen(false)
+      
+      console.log('General workout saved successfully!')
     } catch (error) {
       console.error('Error adding training entry:', error)
-      toast.error('Failed to log workout')
+      alert('Failed to log workout')
     } finally {
       setLoading(false)
     }
@@ -410,41 +410,39 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
 
   const saveHitWorkout = async () => {
     if (!selectedPreset || workoutExercises.length === 0) {
-      toast.error('Please select a workout type and add exercises')
+      alert('Please select a workout type and add exercises')
       return
     }
 
     setLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/hit-workouts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          workout_name: `HIT ${selectedPreset}`,
-          date: customDate,
-          exercises: workoutExercises.filter(ex => 
-            ex.sets.some(set => set.reps !== '' || set.weight !== '')
-          )
-        })
-      })
-
-      if (response.ok) {
-        toast.success('HIT workout logged successfully!')
-        setIsHitDialogOpen(false)
-        setSelectedPreset('')
-        setWorkoutExercises([])
-        setCustomDate(new Date().toISOString().split('T')[0])
-        fetchAllWorkouts()
+      // Create new workout in local state
+      const newHitWorkout: HITWorkout = {
+        type: 'hit',
+        id: Date.now().toString(),
+        user_id: user.id,
+        user_name: user.user_metadata?.name || 'User',
+        workout_name: `HIT ${selectedPreset}`,
+        date: customDate,
+        exercises: workoutExercises.filter(ex => 
+          ex.sets.some(set => set.reps !== '' || set.weight !== '')
+        ),
+        notes: '',
+        endorsements: [],
+        created_at: new Date().toISOString()
       }
+
+      // Add to local state
+      setAllWorkouts(prev => [newHitWorkout, ...prev])
+      
+      console.log('HIT workout saved successfully!')
+      setIsHitDialogOpen(false)
+      setSelectedPreset(undefined)
+      setWorkoutExercises([])
+      setCustomDate(new Date().toISOString().split('T')[0])
     } catch (error) {
       console.error('Error saving workout:', error)
-      toast.error('Failed to save workout')
+      alert('Failed to save workout')
     } finally {
       setLoading(false)
     }

@@ -33,21 +33,9 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
 
   const fetchPhotos = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/photos`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-
-      const data = await response.json()
-      if (data.photos) {
-        setPhotos(data.photos.sort((a: PhotoEntry, b: PhotoEntry) => 
-          new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime()
-        ))
-      }
+      // For now, use local state to store photos until we set up photo storage
+      // In a real implementation, you would fetch from Supabase storage
+      setPhotos([])
     } catch (error) {
       console.error('Error fetching photos:', error)
     }
@@ -80,28 +68,23 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
     setUploading(true)
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      // Create form data
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('week_number', getWeekNumber().toString())
-      formData.append('upload_date', new Date().toISOString().split('T')[0])
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/photos`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: formData
-      })
-
-      if (response.ok) {
-        fetchPhotos()
-      } else {
-        alert('Failed to upload photo')
+      // Create a URL for the uploaded file (for demo purposes)
+      const fileUrl = URL.createObjectURL(file)
+      
+      const newPhoto: PhotoEntry = {
+        id: Date.now().toString(),
+        user_id: user.id,
+        file_name: file.name,
+        file_url: fileUrl,
+        upload_date: new Date().toISOString().split('T')[0],
+        week_number: getWeekNumber(),
+        created_at: new Date().toISOString()
       }
+
+      // Add to local state
+      setPhotos(prev => [newPhoto, ...prev])
+      
+      console.log('Photo uploaded successfully!')
     } catch (error) {
       console.error('Error uploading photo:', error)
       alert('Error uploading photo')
