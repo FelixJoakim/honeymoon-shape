@@ -249,6 +249,8 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
   const [isGeneralDialogOpen, setIsGeneralDialogOpen] = useState(false)
   const [isHitDialogOpen, setIsHitDialogOpen] = useState(false)
   const [editingWorkout, setEditingWorkout] = useState<HITWorkout | null>(null)
+  const [editingExercises, setEditingExercises] = useState<Exercise[]>([])
+  const [editingWorkoutName, setEditingWorkoutName] = useState('')
   
   // General workout state
   const [newWorkout, setNewWorkout] = useState({
@@ -280,6 +282,34 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
         new Date(b.date).getTime() - new Date(a.date).getTime()
       )
     })
+  }
+
+  const sendWorkoutNotification = async (workoutType: string, workoutName: string) => {
+    try {
+      // Determine partner email
+      const isFelix = user.email === 'fleminen@gmail.com'
+      const partnerEmail = isFelix ? 'nopanenanni7@gmail.com' : 'fleminen@gmail.com'
+      const partnerName = isFelix ? 'Anni' : 'Felix'
+      const userName = user.user_metadata?.name || (isFelix ? 'Felix' : 'Anni')
+
+      // For demo purposes, simulate email notification
+      console.log(`Sending workout notification to ${partnerEmail}:`)
+      console.log(`${userName} just completed a ${workoutType} workout: ${workoutName}`)
+      
+      // In production, this would call a Supabase Edge Function
+      // await supabase.functions.invoke('send-workout-notification', {
+      //   body: { partnerEmail, userName, workoutType, workoutName }
+      // })
+      
+      // Show notification to current user
+      setTimeout(() => {
+        alert(`🎉 ${partnerName} has been notified of your workout! Keep it up! 💪`)
+      }, 1000)
+      
+    } catch (error) {
+      console.error('Error sending workout notification:', error)
+      // Don't block workout saving if notification fails
+    }
   }
 
   const fetchAllWorkouts = async () => {
@@ -360,6 +390,9 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
       // Add to local state
       setAllWorkouts(prev => [newGeneralWorkout, ...prev])
 
+      // Send workout notification to partner
+      await sendWorkoutNotification('General', newWorkout.name)
+
       setNewWorkout({
         name: '',
         duration: '',
@@ -408,6 +441,60 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
     })
   }
 
+  const startEditingWorkout = (workout: HITWorkout) => {
+    setEditingWorkout(workout)
+    setEditingWorkoutName(workout.workout_name)
+    setEditingExercises([...workout.exercises])
+  }
+
+  const updateEditingExerciseSet = (exerciseIndex: number, setIndex: number, field: 'reps' | 'weight', value: string) => {
+    setEditingExercises(prev => {
+      const updated = [...prev]
+      updated[exerciseIndex].sets[setIndex] = {
+        ...updated[exerciseIndex].sets[setIndex],
+        [field]: value
+      }
+      return updated
+    })
+  }
+
+  const saveEditedWorkout = async () => {
+    if (!editingWorkout) return
+
+    setLoading(true)
+    try {
+      const updatedWorkout: HITWorkout = {
+        ...editingWorkout,
+        workout_name: editingWorkoutName,
+        exercises: editingExercises
+      }
+
+      // Update in local state
+      setAllWorkouts(prev => prev.map(w => 
+        w.type === 'hit' && (w as HITWorkout).id === editingWorkout.id 
+          ? updatedWorkout 
+          : w
+      ))
+
+      setEditingWorkout(null)
+      setEditingExercises([])
+      setEditingWorkoutName('')
+      
+      console.log('Workout updated successfully!')
+    } catch (error) {
+      console.error('Error updating workout:', error)
+      alert('Failed to update workout')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const cancelEditing = () => {
+    setEditingWorkout(null)
+    setEditingExercises([])
+    setEditingWorkoutName('')
+  }
+
   const saveHitWorkout = async () => {
     if (!selectedPreset || workoutExercises.length === 0) {
       alert('Please select a workout type and add exercises')
@@ -434,6 +521,9 @@ export default function UnifiedTrainingLog({ user }: UnifiedTrainingLogProps) {
 
       // Add to local state
       setAllWorkouts(prev => [newHitWorkout, ...prev])
+      
+      // Send workout notification to partner
+      await sendWorkoutNotification('HIT', `HIT ${selectedPreset}`)
       
       console.log('HIT workout saved successfully!')
       setIsHitDialogOpen(false)

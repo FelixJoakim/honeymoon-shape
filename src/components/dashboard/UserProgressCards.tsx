@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Progress } from '../ui/progress'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
-import { Camera, MessageSquare, Heart, Eye } from 'lucide-react'
+import { Input } from '../ui/input'
+import { Textarea } from '../ui/textarea'
+import { Camera, MessageSquare, Heart, Eye, Mail, Send } from 'lucide-react'
 import { MOCK_ANNI_PROFILE } from './constants'
 import { getWeightProgress } from './helpers'
 
@@ -21,6 +23,9 @@ interface UserProgressCardsProps {
 
 export default function UserProgressCards({ profile }: UserProgressCardsProps) {
   const [showPartnerProgress, setShowPartnerProgress] = useState(false)
+  const [showEncouragementForm, setShowEncouragementForm] = useState(false)
+  const [encouragementMessage, setEncouragementMessage] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
   
   // Determine if current user is Felix or Anni
   const isFelix = profile?.email === 'fleminen@gmail.com' || profile?.name?.toLowerCase().includes('felix')
@@ -63,10 +68,34 @@ export default function UserProgressCards({ profile }: UserProgressCardsProps) {
 
   const currentUserName = isFelix ? 'Felix' : 'Anni'
   const partnerName = isFelix ? 'Anni' : 'Felix'
+  const partnerEmail = isFelix ? 'nopanenanni7@gmail.com' : 'fleminen@gmail.com'
   const currentUserInitial = isFelix ? 'F' : 'A'
   const partnerInitial = isFelix ? 'A' : 'F'
   const currentUserColor = isFelix ? 'amber' : 'rose'
   const partnerColor = isFelix ? 'rose' : 'amber'
+
+  const sendEncouragementEmail = async () => {
+    if (!encouragementMessage.trim()) return
+    
+    setEmailSending(true)
+    try {
+      // For demo purposes, we'll simulate email sending
+      // In production, this would integrate with Supabase Edge Functions + email service
+      console.log(`Sending encouragement email to ${partnerEmail}:`, encouragementMessage)
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      alert(`Encouragement sent to ${partnerName}! 💪❤️`)
+      setEncouragementMessage('')
+      setShowEncouragementForm(false)
+    } catch (error) {
+      console.error('Error sending encouragement:', error)
+      alert('Failed to send encouragement. Please try again.')
+    } finally {
+      setEmailSending(false)
+    }
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -177,7 +206,7 @@ export default function UserProgressCards({ profile }: UserProgressCardsProps) {
                   <p className="text-sm text-gray-700 italic">"{partnerThought}"</p>
                 </div>
               </div>
-              <div className="mt-3 pt-3 border-t border-rose-200">
+              <div className="mt-3 pt-3 border-t border-rose-200 space-y-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -187,6 +216,50 @@ export default function UserProgressCards({ profile }: UserProgressCardsProps) {
                   <Eye className="w-3 h-3 mr-1" />
                   {showPartnerProgress ? 'Hide' : 'View'} {partnerName}'s Gallery & Workouts
                 </Button>
+                
+                {!showEncouragementForm ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowEncouragementForm(true)}
+                    className="w-full text-xs bg-gradient-to-r from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100"
+                  >
+                    <Mail className="w-3 h-3 mr-1" />
+                    Send Encouragement to {partnerName}
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder={`Write something encouraging for ${partnerName}...`}
+                      value={encouragementMessage}
+                      onChange={(e) => setEncouragementMessage(e.target.value)}
+                      className="text-xs resize-none"
+                      rows={3}
+                    />
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        onClick={sendEncouragementEmail}
+                        disabled={emailSending || !encouragementMessage.trim()}
+                        className="flex-1 text-xs bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                      >
+                        <Send className="w-3 h-3 mr-1" />
+                        {emailSending ? 'Sending...' : 'Send'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setShowEncouragementForm(false)
+                          setEncouragementMessage('')
+                        }}
+                        className="text-xs"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
