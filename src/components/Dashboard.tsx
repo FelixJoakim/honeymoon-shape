@@ -64,7 +64,20 @@ export default function Dashboard({ user, profile: initialProfile }: DashboardPr
   }
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Error signing out:', error)
+      } else {
+        console.log('Successfully signed out')
+        // Force a page reload to ensure clean state
+        window.location.reload()
+      }
+    } catch (error) {
+      console.error('Unexpected error during sign out:', error)
+      // Force a page reload even if there's an error
+      window.location.reload()
+    }
   }
 
   if (loading) {
