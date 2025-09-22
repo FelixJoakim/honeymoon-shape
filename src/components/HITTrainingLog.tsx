@@ -97,21 +97,19 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
 
   const fetchWorkouts = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      const { data, error } = await supabase
+        .from('hit_workouts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/hit-workouts`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-
-      const data = await response.json()
-      if (data.workouts) {
-        setWorkouts(data.workouts.sort((a: HITWorkout, b: HITWorkout) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        ))
+      if (error) {
+        console.error('Error fetching HIT workouts:', error)
+        return
       }
+
+      console.log('Fetched HIT workouts:', data)
+      setWorkouts(data || [])
     } catch (error) {
       console.error('Error fetching HIT workouts:', error)
     }
@@ -119,21 +117,19 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
 
   const fetchPartnerWorkouts = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      const { data, error } = await supabase
+        .from('hit_workouts')
+        .select('*')
+        .neq('user_id', user.id)
+        .order('date', { ascending: false })
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/partner-workouts`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-
-      const data = await response.json()
-      if (data.workouts) {
-        setPartnerWorkouts(data.workouts.sort((a: HITWorkout, b: HITWorkout) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        ))
+      if (error) {
+        console.error('Error fetching partner workouts:', error)
+        return
       }
+
+      console.log('Fetched partner workouts:', data)
+      setPartnerWorkouts(data || [])
     } catch (error) {
       console.error('Error fetching partner workouts:', error)
     }
@@ -177,32 +173,37 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
 
     setLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/hit-workouts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          workout_name: `HIT ${selectedPreset}`,
-          date: customDate,
-          exercises: workoutExercises.filter(ex => 
-            ex.sets.some(set => set.reps !== '' || set.weight !== '')
-          )
-        })
-      })
-
-      if (response.ok) {
-        toast.success('Workout logged successfully!')
-        setIsDialogOpen(false)
-        setSelectedPreset('')
-        setWorkoutExercises([])
-        setCustomDate(new Date().toISOString().split('T')[0])
-        fetchWorkouts()
+      const workoutData = {
+        user_id: user.id,
+        user_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+        workout_name: `HIT ${selectedPreset}`,
+        date: customDate,
+        exercises: workoutExercises.filter(ex => 
+          ex.sets.some(set => set.reps !== '' || set.weight !== '')
+        ),
+        notes: '',
+        endorsements: [],
+        created_at: new Date().toISOString()
       }
+
+      const { data, error } = await supabase
+        .from('hit_workouts')
+        .insert([workoutData])
+        .select()
+
+      if (error) {
+        console.error('Error saving workout:', error)
+        toast.error('Failed to save workout')
+        return
+      }
+
+      toast.success('Workout logged successfully!')
+      setIsDialogOpen(false)
+      setSelectedPreset('')
+      setWorkoutExercises([])
+      setCustomDate(new Date().toISOString().split('T')[0])
+      await fetchWorkouts()
+      console.log('HIT workout saved successfully!', data)
     } catch (error) {
       console.error('Error saving workout:', error)
       toast.error('Failed to save workout')
