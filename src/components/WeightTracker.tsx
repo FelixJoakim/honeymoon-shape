@@ -56,8 +56,30 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
     try {
       if (!user) return
 
-      // For now, use mock data until we set up weight tracking table
-      setWeightEntries([])
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321'
+      const response = await fetch(`${supabaseUrl}/functions/v1/make-server-6a2efb2d/weight`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        const entries = result.entries || []
+        console.log('Fetched weight entries:', entries)
+        // Sort entries by date
+        const sortedEntries = entries.sort((a: WeightEntry, b: WeightEntry) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        )
+        setWeightEntries(sortedEntries)
+      } else {
+        console.error('Failed to fetch weight entries:', response.status, response.statusText)
+      }
     } catch (error) {
       console.error('Error fetching weight entries:', error)
     }
@@ -103,20 +125,36 @@ export default function WeightTracker({ user, profile, onProfileUpdate }: Weight
 
     setLoading(true)
     try {
-      // For now, just add to local state until we set up weight tracking table
-      const newEntry = {
-        id: Date.now().toString(),
-        weight: parseFloat(newWeight),
-        date: new Date().toISOString().split('T')[0],
-        user_id: user.id
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        console.error('No session token available')
+        return
       }
-      
-      setWeightEntries(prev => [...prev, newEntry].sort((a, b) => 
-        new Date(a.date).getTime() - new Date(b.date).getTime()
-      ))
-      setNewWeight('')
-      
-      console.log('Weight entry added successfully!')
+
+      const weightData = {
+        weight: parseFloat(newWeight),
+        date: new Date().toISOString().split('T')[0]
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321'
+      const response = await fetch(`${supabaseUrl}/functions/v1/make-server-6a2efb2d/weight`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(weightData)
+      })
+
+      if (response.ok) {
+        // Refresh the weight entries to get the latest data
+        await fetchWeightEntries()
+        setNewWeight('')
+        console.log('Weight entry added successfully!')
+      } else {
+        const errorData = await response.json()
+        console.error('Failed to save weight entry:', response.status, response.statusText, errorData)
+      }
     } catch (error) {
       console.error('Error adding weight entry:', error)
     } finally {
