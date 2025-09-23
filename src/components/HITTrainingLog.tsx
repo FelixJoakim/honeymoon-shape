@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from './ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { Plus, Dumbbell, Award, Users, Target, TrendingUp, Heart } from 'lucide-react'
+import { Plus, Dumbbell, Award, Users, Target, TrendingUp, Heart, Edit, Trash2 } from 'lucide-react'
 import { toast } from 'sonner@2.0.3'
 
 interface HITWorkout {
@@ -78,6 +78,13 @@ const PRESET_WORKOUTS = {
     { name: 'Mountain Climbers' },
     { name: 'Jump Squats' },
     { name: 'Push-ups' }
+  ],
+  'Empty': [
+    { name: '' },
+    { name: '' },
+    { name: '' },
+    { name: '' },
+    { name: '' }
   ]
 }
 
@@ -89,6 +96,8 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
   const [selectedPreset, setSelectedPreset] = useState<string | undefined>(undefined)
   const [customDate, setCustomDate] = useState(new Date().toISOString().split('T')[0])
   const [workoutExercises, setWorkoutExercises] = useState<Exercise[]>([])
+  const [editingWorkout, setEditingWorkout] = useState<HITWorkout | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   useEffect(() => {
     fetchWorkouts()
@@ -163,6 +172,102 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
       updated[exerciseIndex].sets.push({ reps: '', weight: '' })
       return updated
     })
+  }
+
+  const startEditWorkout = (workout: HITWorkout) => {
+    setEditingWorkout(workout)
+    setSelectedPreset(workout.workout_name.replace('HIT ', ''))
+    setCustomDate(workout.date)
+    setWorkoutExercises(workout.exercises)
+    setIsEditDialogOpen(true)
+  }
+
+  const updateExerciseName = (exerciseIndex: number, name: string) => {
+    setWorkoutExercises(prev => {
+      const updated = [...prev]
+      updated[exerciseIndex].name = name
+      return updated
+    })
+  }
+
+  const addExercise = () => {
+    setWorkoutExercises(prev => [
+      ...prev,
+      { name: '', sets: [{ reps: '', weight: '' }, { reps: '', weight: '' }] }
+    ])
+  }
+
+  const removeExercise = (exerciseIndex: number) => {
+    setWorkoutExercises(prev => prev.filter((_, idx) => idx !== exerciseIndex))
+  }
+
+  const updateWorkout = async () => {
+    if (!editingWorkout || !selectedPreset || workoutExercises.length === 0) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const workoutData = {
+        workout_name: `HIT ${selectedPreset}`,
+        date: customDate,
+        exercises: workoutExercises.filter(ex => 
+          ex.sets.some(set => set.reps !== '' || set.weight !== '')
+        ),
+        notes: editingWorkout.notes || '',
+        updated_at: new Date().toISOString()
+      }
+
+      const { data, error } = await supabase
+        .from('hit_workouts')
+        .update(workoutData)
+        .eq('id', editingWorkout.id)
+        .select()
+
+      if (error) {
+        console.error('Error updating workout:', error)
+        toast.error('Failed to update workout')
+        return
+      }
+
+      toast.success('Workout updated successfully!')
+      setIsEditDialogOpen(false)
+      setEditingWorkout(null)
+      setSelectedPreset('')
+      setWorkoutExercises([])
+      setCustomDate(new Date().toISOString().split('T')[0])
+      await fetchWorkouts()
+      console.log('HIT workout updated successfully!', data)
+    } catch (error) {
+      console.error('Error updating workout:', error)
+      toast.error('Failed to update workout')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const deleteWorkout = async (workoutId: string) => {
+    if (!confirm('Are you sure you want to delete this workout?')) return
+
+    try {
+      const { error } = await supabase
+        .from('hit_workouts')
+        .delete()
+        .eq('id', workoutId)
+
+      if (error) {
+        console.error('Error deleting workout:', error)
+        toast.error('Failed to delete workout')
+        return
+      }
+
+      toast.success('Workout deleted successfully!')
+      await fetchWorkouts()
+    } catch (error) {
+      console.error('Error deleting workout:', error)
+      toast.error('Failed to delete workout')
+    }
   }
 
   const saveWorkout = async () => {
@@ -255,6 +360,27 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {!showEndorse && (
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => startEditWorkout(workout)}
+                  className="flex items-center gap-1"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => deleteWorkout(workout.id)}
+                  className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
             {showEndorse && !workout.endorsements?.includes(user.id) && (
               <Button
                 size="sm"
@@ -378,6 +504,7 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
                       <SelectItem value="Upper Body Strength">Upper Body Strength</SelectItem>
                       <SelectItem value="Lower Body Power">Lower Body Power</SelectItem>
                       <SelectItem value="Full Body HIIT">Full Body HIIT</SelectItem>
+                      <SelectItem value="Empty">Empty (Custom)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -403,14 +530,19 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
                           <th className="text-center py-2 px-2 font-medium">KG</th>
                           <th className="text-center py-2 px-2 font-medium">REP</th>
                           <th className="text-center py-2 px-2 font-medium">KG</th>
-                          <th className="text-center py-2 px-2 font-medium">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {workoutExercises.map((exercise, exerciseIdx) => (
                           <tr key={exerciseIdx} className="border-b border-border/50">
                             <td className="py-2 px-2 font-medium text-sm">
-                              {exercise.name}
+                              <Input
+                                type="text"
+                                placeholder="Exercise name"
+                                value={exercise.name}
+                                onChange={(e) => updateExerciseName(exerciseIdx, e.target.value)}
+                                className="text-sm"
+                              />
                             </td>
                             {[0, 1].map(setIdx => (
                               <React.Fragment key={setIdx}>
@@ -434,18 +566,34 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
                                 </td>
                               </React.Fragment>
                             ))}
-                            <td className="py-2 px-2 text-center">
+                          </tr>
+                        ))}
+                        <tr>
+                          <td colSpan={5} className="py-2 px-2 text-center">
+                            <div className="flex gap-2 justify-center">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => addSet(exerciseIdx)}
-                                disabled={exercise.sets.length >= 4}
+                                onClick={addExercise}
+                                className="flex items-center gap-1"
                               >
                                 <Plus className="w-3 h-3" />
+                                Add Exercise
                               </Button>
-                            </td>
-                          </tr>
-                        ))}
+                              {workoutExercises.map((_, exerciseIdx) => (
+                                <Button
+                                  key={exerciseIdx}
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeExercise(exerciseIdx)}
+                                  className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
@@ -459,6 +607,143 @@ export default function HITTrainingLog({ user }: HITTrainingLogProps) {
                   className="flex-1 bg-primary hover:bg-primary/90"
                 >
                   {loading ? 'Saving...' : 'Save Workout'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Workout Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="w-5 h-5 text-primary" />
+                Edit Workout
+              </DialogTitle>
+              <DialogDescription>
+                Modify your training session details
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Workout Type</Label>
+                  <Select value={selectedPreset || undefined} onValueChange={handlePresetSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select workout type (HIT, Strength, HIIT, etc.)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="HIT A (Upper Body)">HIT A (Upper Body)</SelectItem>
+                      <SelectItem value="HIT B (Lower Body)">HIT B (Lower Body)</SelectItem>
+                      <SelectItem value="HIT C (Full Body)">HIT C (Full Body)</SelectItem>
+                      <SelectItem value="Upper Body Strength">Upper Body Strength</SelectItem>
+                      <SelectItem value="Lower Body Power">Lower Body Power</SelectItem>
+                      <SelectItem value="Full Body HIIT">Full Body HIIT</SelectItem>
+                      <SelectItem value="Empty">Empty (Custom)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Date</Label>
+                  <Input
+                    type="date"
+                    value={customDate}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {workoutExercises.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="font-medium">Exercise Details</h3>
+                  <div className="bg-background/50 rounded-lg p-4 overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-2 px-2 font-medium">EXERCISE</th>
+                          <th className="text-center py-2 px-2 font-medium">REP</th>
+                          <th className="text-center py-2 px-2 font-medium">KG</th>
+                          <th className="text-center py-2 px-2 font-medium">REP</th>
+                          <th className="text-center py-2 px-2 font-medium">KG</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {workoutExercises.map((exercise, exerciseIdx) => (
+                          <tr key={exerciseIdx} className="border-b border-border/50">
+                            <td className="py-2 px-2 font-medium text-sm">
+                              <Input
+                                type="text"
+                                placeholder="Exercise name"
+                                value={exercise.name}
+                                onChange={(e) => updateExerciseName(exerciseIdx, e.target.value)}
+                                className="text-sm"
+                              />
+                            </td>
+                            {[0, 1].map(setIdx => (
+                              <React.Fragment key={setIdx}>
+                                <td className="py-2 px-2">
+                                  <Input
+                                    type="text"
+                                    placeholder="Reps"
+                                    value={exercise.sets[setIdx]?.reps || ''}
+                                    onChange={(e) => updateExerciseSet(exerciseIdx, setIdx, 'reps', e.target.value)}
+                                    className="text-center text-sm"
+                                  />
+                                </td>
+                                <td className="py-2 px-2">
+                                  <Input
+                                    type="text"
+                                    placeholder="Weight"
+                                    value={exercise.sets[setIdx]?.weight || ''}
+                                    onChange={(e) => updateExerciseSet(exerciseIdx, setIdx, 'weight', e.target.value)}
+                                    className="text-center text-sm"
+                                  />
+                                </td>
+                              </React.Fragment>
+                            ))}
+                          </tr>
+                        ))}
+                        <tr>
+                          <td colSpan={5} className="py-2 px-2 text-center">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={addExercise}
+                                className="flex items-center gap-1"
+                              >
+                                <Plus className="w-3 h-3" />
+                                Add Exercise
+                              </Button>
+                              {workoutExercises.map((_, exerciseIdx) => (
+                                <Button
+                                  key={exerciseIdx}
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeExercise(exerciseIdx)}
+                                  className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={updateWorkout}
+                  disabled={loading || !selectedPreset}
+                  className="flex-1 bg-primary hover:bg-primary/90"
+                >
+                  {loading ? 'Updating...' : 'Update Workout'}
                 </Button>
               </div>
             </div>
