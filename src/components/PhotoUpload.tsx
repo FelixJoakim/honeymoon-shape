@@ -36,14 +36,8 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      // Create bucket if it doesn't exist
-      const bucketName = 'make-6a2efb2d-photos'
-      const { data: buckets } = await supabase.storage.listBuckets()
-      const bucketExists = buckets?.some(bucket => bucket.name === bucketName)
-      
-      if (!bucketExists) {
-        await supabase.storage.createBucket(bucketName, { public: false })
-      }
+      // Use a simple bucket name that should exist
+      const bucketName = 'photos'
 
       // List files in the user's folder
       const { data: files, error } = await supabase.storage
@@ -123,14 +117,8 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
         return
       }
 
-      // Create bucket if it doesn't exist
-      const bucketName = 'make-6a2efb2d-photos'
-      const { data: buckets } = await supabase.storage.listBuckets()
-      const bucketExists = buckets?.some(bucket => bucket.name === bucketName)
-      
-      if (!bucketExists) {
-        await supabase.storage.createBucket(bucketName, { public: false })
-      }
+      // Use a simple bucket name that should exist
+      const bucketName = 'photos'
 
       // Upload file
       const fileName = `${Date.now()}-${file.name}`
