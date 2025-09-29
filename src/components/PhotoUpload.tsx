@@ -36,19 +36,54 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/photos`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        const photos = data.photos || []
-        setPhotos(photos.sort((a: PhotoEntry, b: PhotoEntry) => 
-          new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime()
-        ))
+      // Create bucket if it doesn't exist
+      const bucketName = 'make-6a2efb2d-photos'
+      const { data: buckets } = await supabase.storage.listBuckets()
+      const bucketExists = buckets?.some(bucket => bucket.name === bucketName)
+      
+      if (!bucketExists) {
+        await supabase.storage.createBucket(bucketName, { public: false })
       }
+
+      // List files in the user's folder
+      const { data: files, error } = await supabase.storage
+        .from(bucketName)
+        .list(`${session.user.id}`, {
+          limit: 100,
+          offset: 0,
+        })
+
+      if (error) {
+        console.error('Error listing photos:', error)
+        return
+      }
+
+      // Convert files to photo entries
+      const photos: PhotoEntry[] = []
+      for (const file of files || []) {
+        // Get signed URL for the file
+        const { data: urlData } = await supabase.storage
+          .from(bucketName)
+          .createSignedUrl(`${session.user.id}/${file.name}`, 60 * 60 * 24 * 365) // 1 year
+
+        // Extract metadata from filename (format: timestamp-originalname)
+        const timestamp = file.name.split('-')[0]
+        const uploadDate = new Date(parseInt(timestamp)).toISOString().split('T')[0]
+        
+        photos.push({
+          id: file.id || file.name,
+          user_id: session.user.id,
+          file_name: file.name,
+          file_url: urlData?.signedUrl || '',
+          upload_date: uploadDate,
+          week_number: getWeekNumber(),
+          created_at: new Date(parseInt(timestamp)).toISOString()
+        })
+      }
+
+      setPhotos(photos.sort((a: PhotoEntry, b: PhotoEntry) => 
+        new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime()
+      ))
     } catch (error) {
       console.error('Error fetching photos:', error)
     }
@@ -88,27 +123,31 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
         return
       }
 
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('week_number', getWeekNumber().toString())
-      formData.append('upload_date', new Date().toISOString().split('T')[0])
-
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/photos`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: formData
-      })
-
-      if (response.ok) {
-        console.log('Photo uploaded successfully!')
-        // Refresh the photos list
-        await fetchPhotos()
-      } else {
-        const errorData = await response.json()
-        alert(`Upload failed: ${errorData.error || 'Unknown error'}`)
+      // Create bucket if it doesn't exist
+      const bucketName = 'make-6a2efb2d-photos'
+      const { data: buckets } = await supabase.storage.listBuckets()
+      const bucketExists = buckets?.some(bucket => bucket.name === bucketName)
+      
+      if (!bucketExists) {
+        await supabase.storage.createBucket(bucketName, { public: false })
       }
+
+      // Upload file
+      const fileName = `${Date.now()}-${file.name}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(`${session.user.id}/${fileName}`, file)
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError)
+        alert(`Upload failed: ${uploadError.message}`)
+        setUploading(false)
+        return
+      }
+
+      console.log('Photo uploaded successfully!')
+      // Refresh the photos list
+      await fetchPhotos()
     } catch (error) {
       console.error('Error uploading photo:', error)
       alert('Error uploading photo')
@@ -141,21 +180,28 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/photos/${photoId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
-
-      if (response.ok) {
-        console.log('Photo deleted successfully!')
-        // Refresh the photos list
-        await fetchPhotos()
-      } else {
-        const errorData = await response.json()
-        alert(`Delete failed: ${errorData.error || 'Unknown error'}`)
+      // Find the photo to get the file path
+      const photo = photos.find(p => p.id === photoId)
+      if (!photo) {
+        alert('Photo not found')
+        return
       }
+
+      // Delete from storage
+      const bucketName = 'make-6a2efb2d-photos'
+      const { error: deleteError } = await supabase.storage
+        .from(bucketName)
+        .remove([`${session.user.id}/${photo.file_name}`])
+
+      if (deleteError) {
+        console.error('Delete error:', deleteError)
+        alert(`Delete failed: ${deleteError.message}`)
+        return
+      }
+
+      console.log('Photo deleted successfully!')
+      // Refresh the photos list
+      await fetchPhotos()
     } catch (error) {
       console.error('Error deleting photo:', error)
       alert('Error deleting photo')
