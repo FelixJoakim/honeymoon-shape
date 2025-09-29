@@ -33,10 +33,19 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
 
   const fetchPhotos = async () => {
     try {
-      const storedPhotos = localStorage.getItem(`photos_${user.id}`)
-      if (storedPhotos) {
-        const parsedPhotos = JSON.parse(storedPhotos)
-        setPhotos(parsedPhotos.sort((a: PhotoEntry, b: PhotoEntry) => 
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/photos`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const photos = data.photos || []
+        setPhotos(photos.sort((a: PhotoEntry, b: PhotoEntry) => 
           new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime()
         ))
       }
@@ -72,40 +81,38 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
     setUploading(true)
 
     try {
-      // Convert file to base64 for persistent storage
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const base64 = e.target?.result as string
-        
-        const newPhoto: PhotoEntry = {
-          id: Date.now().toString(),
-          user_id: user.id,
-          file_name: file.name,
-          file_url: base64,
-          upload_date: new Date().toISOString().split('T')[0],
-          week_number: getWeekNumber(),
-          created_at: new Date().toISOString()
-        }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        alert('Please sign in to upload photos')
+        setUploading(false)
+        return
+      }
 
-        // Add to local state and persist
-        const updatedPhotos = [newPhoto, ...photos]
-        setPhotos(updatedPhotos)
-        localStorage.setItem(`photos_${user.id}`, JSON.stringify(updatedPhotos))
-        
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('week_number', getWeekNumber().toString())
+      formData.append('upload_date', new Date().toISOString().split('T')[0])
+
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-6a2efb2d/photos`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: formData
+      })
+
+      if (response.ok) {
         console.log('Photo uploaded successfully!')
-        setUploading(false)
+        // Refresh the photos list
+        await fetchPhotos()
+      } else {
+        const errorData = await response.json()
+        alert(`Upload failed: ${errorData.error || 'Unknown error'}`)
       }
-      
-      reader.onerror = () => {
-        console.error('Error reading file')
-        alert('Error reading file')
-        setUploading(false)
-      }
-      
-      reader.readAsDataURL(file)
     } catch (error) {
       console.error('Error uploading photo:', error)
       alert('Error uploading photo')
+    } finally {
       setUploading(false)
     }
   }
@@ -142,10 +149,16 @@ export default function PhotoUpload({ user }: PhotoUploadProps) {
       })
 
       if (response.ok) {
-        fetchPhotos()
+        console.log('Photo deleted successfully!')
+        // Refresh the photos list
+        await fetchPhotos()
+      } else {
+        const errorData = await response.json()
+        alert(`Delete failed: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error deleting photo:', error)
+      alert('Error deleting photo')
     }
   }
 
